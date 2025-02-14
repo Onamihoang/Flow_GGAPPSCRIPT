@@ -1,19 +1,30 @@
 // Config Sheet ID - thay thế bằng ID của Google Sheet bạn vừa tạo
 const CONFIG_SHEET_ID = '1_AHnosp3iZB21fgvqGAH0nSjKjbaf3Wp1iqt4bcog_A';
 
+// Thêm hàm doGet để xử lý GET requests
+function doGet() {
+  return ContentService.createTextOutput('App is running');
+}
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     
+    // Add logging
+    Logger.log('Received webhook data:', data);
+    
     // Lấy thông tin repo
     const repoName = data.repository.name;
+    Logger.log('Repository name:', repoName);
     
     // Lấy cấu hình từ sheet
     const configSheet = SpreadsheetApp.openById(CONFIG_SHEET_ID);
     const configs = configSheet.getSheetByName('Configurations');
     const repoConfig = getRepoConfig(configs, repoName);
+    Logger.log('Repo config:', repoConfig);
     
     if (!repoConfig) {
+      Logger.log('No configuration found for repository:', repoName);
       return ContentService.createTextOutput(
         `No configuration found for repository: ${repoName}`
       );
@@ -38,6 +49,7 @@ function doPost(e) {
     
     return ContentService.createTextOutput('Success');
   } catch (error) {
+    Logger.log('Error:', error);
     return ContentService.createTextOutput(`Error: ${error.toString()}`);
   }
 }
@@ -73,4 +85,23 @@ function setupNewRepo(repoName, docId, owner) {
   body.appendParagraph(`Repository: ${repoName}`)
       .setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph('-------------------');
+}
+
+// Hàm để setup dữ liệu ban đầu
+function setupInitialData() {
+  const configSheet = SpreadsheetApp.openById(CONFIG_SHEET_ID);
+  const configs = configSheet.getSheetByName('Configurations');
+  
+  // Xóa dữ liệu cũ
+  configs.clear();
+  
+  // Thêm headers
+  configs.getRange('A1:C1').setValues([['Repository Name', 'Google Doc ID', 'Owner']]);
+  
+  // Thêm dữ liệu cho repo
+  setupNewRepo(
+    'test-git-doc',     // Tên repository của bạn
+    'YOUR_DOC_ID_HERE', // ID của Google Doc bạn vừa tạo
+    'your-username'     // GitHub username của bạn
+  );
 }
