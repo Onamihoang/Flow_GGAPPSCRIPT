@@ -1,0 +1,22 @@
+name: Update Google Docs
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send webhook to Google Apps Script
+        run: |
+          curl -X POST \
+          -H "Content-Type: application/json" \
+          -d '{
+            "pusher": {
+              "name": "${{ github.actor }}"
+            },
+            "head_commit": {
+              "message": "${{ github.event.head_commit.message }}"
+            }
+          }' \
+          ${{ secrets.GOOGLE_APPS_SCRIPT_URL }}
