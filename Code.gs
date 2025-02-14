@@ -9,19 +9,8 @@ function doGet() {
 
 function doPost(e) {
   try {
-    // Log toàn bộ request để debug
-    console.log('Headers:', e.headers);
-    console.log('Post data:', e.postData.contents);
-    
     const payload = JSON.parse(e.postData.contents);
-    console.log('Parsed payload:', payload);
     
-    // Kiểm tra xem có commit không
-    if (!payload.head_commit) {
-      console.log('No head_commit found in payload');
-      return ContentService.createTextOutput('No commit data').setMimeType(ContentService.MimeType.TEXT);
-    }
-
     // Update Google Doc
     const doc = DocumentApp.openById('1Q7qikO2qplsSreFIt6GMvyphsj0kyyWE4t8pHs7fnRE');
     const body = doc.getBody();
@@ -39,10 +28,12 @@ function doPost(e) {
     
     doc.saveAndClose();
     
-    return ContentService.createTextOutput('Success').setMimeType(ContentService.MimeType.TEXT);
+    return ContentService.createTextOutput('Success')
+      .setMimeType(ContentService.MimeType.TEXT);
+      
   } catch (error) {
-    console.error('Error:', error);
-    return ContentService.createTextOutput('Error: ' + error.message).setMimeType(ContentService.MimeType.TEXT);
+    return ContentService.createTextOutput('Error: ' + error.message)
+      .setMimeType(ContentService.MimeType.TEXT);
   }
 }
 
