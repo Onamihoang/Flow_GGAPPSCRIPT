@@ -8,27 +8,40 @@ function doGet() {
 }
 
 function doPost(e) {
-  const payload = JSON.parse(e.postData.contents);
-  
-  // Verify webhook signature
-  if (!verifyWebhookSignature(e.headers['X-Hub-Signature'], e.postData.contents)) {
-    return ContentService.createTextOutput('Invalid signature').setMimeType(ContentService.MimeType.TEXT);
-  }
-  
   try {
-    // Đọc config từ repo
-    const configUrl = `https://api.github.com/repos/${payload.repository.full_name}/contents/.github/docs-sync.yml`;
-    const configResponse = UrlFetchApp.fetch(configUrl);
-    const configData = JSON.parse(configResponse.getContentText());
-    const config = YAML.parse(Utilities.newBlob(Utilities.base64Decode(configData.content)).getDataAsString());
+    // Log toàn bộ request để debug
+    console.log('Headers:', e.headers);
+    console.log('Post data:', e.postData.contents);
     
+    const payload = JSON.parse(e.postData.contents);
+    console.log('Parsed payload:', payload);
+    
+    // Kiểm tra xem có commit không
+    if (!payload.head_commit) {
+      console.log('No head_commit found in payload');
+      return ContentService.createTextOutput('No commit data').setMimeType(ContentService.MimeType.TEXT);
+    }
+
     // Update Google Doc
-    const doc = DocumentApp.openById(config.google_docs.doc_id);
-    updateDoc(doc, payload);
+    const doc = DocumentApp.openById('1Q7qikO2qplsSreFIt6GMvyphsj0kyyWE4t8pHs7fnRE');
+    const body = doc.getBody();
+    
+    // Thêm thông tin commit
+    body.appendParagraph('🔄 New Commit Details:')
+        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    
+    body.appendParagraph(`📦 Repository: ${payload.repository.name}`);
+    body.appendParagraph(`👤 Author: ${payload.head_commit.author.name}`);
+    body.appendParagraph(`💬 Message: ${payload.head_commit.message}`);
+    body.appendParagraph(`🕒 Time: ${new Date(payload.head_commit.timestamp).toLocaleString()}`);
+    body.appendParagraph(`📝 Modified files: ${payload.head_commit.modified.join(', ')}`);
+    body.appendParagraph('-------------------');
+    
+    doc.saveAndClose();
     
     return ContentService.createTextOutput('Success').setMimeType(ContentService.MimeType.TEXT);
   } catch (error) {
-    console.error(error);
+    console.error('Error:', error);
     return ContentService.createTextOutput('Error: ' + error.message).setMimeType(ContentService.MimeType.TEXT);
   }
 }
