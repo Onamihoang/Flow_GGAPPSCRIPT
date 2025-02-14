@@ -1,0 +1,10 @@
+google_docs:
+  doc_id: "1Q7qikO2qplsSreFIt6GMvyphsj0kyyWE4t8pHs7fnRE"  # ID của Google Doc
+  sync:
+    patterns:
+      - "*.md"
+      - "docs/**"
+    exclude:
+      - "node_modules/**"
+    branches:
+      - main 

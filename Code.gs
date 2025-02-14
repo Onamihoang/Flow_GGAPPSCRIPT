@@ -1,5 +1,6 @@
 // Config Sheet ID - thay thế bằng ID của Google Sheet bạn vừa tạo
 const CONFIG_SHEET_ID = '1_AHnosp3iZB21fgvqGAH0nSjKjbaf3Wp1iqt4bcog_A';
+const GITHUB_SECRET = 'generateRandomString';
 
 // Thêm hàm doGet để xử lý GET requests
 function doGet() {
@@ -7,50 +8,59 @@ function doGet() {
 }
 
 function doPost(e) {
+  const payload = JSON.parse(e.postData.contents);
+  
+  // Verify webhook signature
+  if (!verifyWebhookSignature(e.headers['X-Hub-Signature'], e.postData.contents)) {
+    return ContentService.createTextOutput('Invalid signature').setMimeType(ContentService.MimeType.TEXT);
+  }
+  
   try {
-    const data = JSON.parse(e.postData.contents);
+    // Đọc config từ repo
+    const configUrl = `https://api.github.com/repos/${payload.repository.full_name}/contents/.github/docs-sync.yml`;
+    const configResponse = UrlFetchApp.fetch(configUrl);
+    const configData = JSON.parse(configResponse.getContentText());
+    const config = YAML.parse(Utilities.newBlob(Utilities.base64Decode(configData.content)).getDataAsString());
     
-    // Add logging
-    Logger.log('Received webhook data:', data);
+    // Update Google Doc
+    const doc = DocumentApp.openById(config.google_docs.doc_id);
+    updateDoc(doc, payload);
     
-    // Lấy thông tin repo
-    const repoName = data.repository.name;
-    Logger.log('Repository name:', repoName);
-    
-    // Lấy cấu hình từ sheet
-    const configSheet = SpreadsheetApp.openById(CONFIG_SHEET_ID);
-    const configs = configSheet.getSheetByName('Configurations');
-    const repoConfig = getRepoConfig(configs, repoName);
-    Logger.log('Repo config:', repoConfig);
-    
-    if (!repoConfig) {
-      Logger.log('No configuration found for repository:', repoName);
-      return ContentService.createTextOutput(
-        `No configuration found for repository: ${repoName}`
-      );
-    }
-    
-    // Cập nhật document
-    const doc = DocumentApp.openById(repoConfig.docId);
+    return ContentService.createTextOutput('Success').setMimeType(ContentService.MimeType.TEXT);
+  } catch (error) {
+    console.error(error);
+    return ContentService.createTextOutput('Error: ' + error.message).setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+
+function verifyWebhookSignature(signature, payload) {
+  const computedSignature = 'sha1=' + Utilities.computeHmacSha1Signature(payload, GITHUB_SECRET)
+    .map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
+  return signature === computedSignature;
+}
+
+function updateDoc(doc, payload) {
+  if (!doc) {
+    throw new Error('Document not found');
+  }
+  
+  try {
     const body = doc.getBody();
     
     // Thêm thông tin commit
     body.appendParagraph('🔄 New Commit Details:')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
     
-    body.appendParagraph(`📦 Repository: ${repoName}`);
-    body.appendParagraph(`👤 Author: ${data.pusher.name}`);
-    body.appendParagraph(`💬 Message: ${data.head_commit.message}`);
+    body.appendParagraph(`📦 Repository: ${payload.repository.name}`);
+    body.appendParagraph(`👤 Author: ${payload.pusher.name}`);
+    body.appendParagraph(`💬 Message: ${payload.head_commit.message}`);
     body.appendParagraph(`⏰ Time: ${new Date().toLocaleString()}`);
     body.appendParagraph('-------------------');
     
-    // Lưu thay đổi
     doc.saveAndClose();
-    
-    return ContentService.createTextOutput('Success');
-  } catch (error) {
-    Logger.log('Error:', error);
-    return ContentService.createTextOutput(`Error: ${error.toString()}`);
+  } catch (e) {
+    console.error('Error updating doc:', e);
+    throw e;
   }
 }
 
@@ -100,8 +110,8 @@ function setupInitialData() {
   
   // Thêm dữ liệu cho repo
   setupNewRepo(
-    'test-git-doc',     // Tên repository của bạn
-    'YOUR_DOC_ID_HERE', // ID của Google Doc bạn vừa tạo
-    'your-username'     // GitHub username của bạn
+    'Flow_GGAPPSCRIPT',     // Tên repository của bạn
+    '1Q7qikO2qplsSreFIt6GMvyphsj0kyyWE4t8pHs7fnRE', // ID của Google Doc bạn vừa tạo
+    'Onamihoang'     // GitHub username của bạn
   );
 }
