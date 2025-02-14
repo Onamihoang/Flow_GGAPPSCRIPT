@@ -4,10 +4,18 @@ const GITHUB_SECRET = 'generateRandomString';
 
 // Thêm hàm doGet để xử lý GET requests
 function doGet() {
-  return ContentService.createTextOutput('App is running');
+  return ContentService.createTextOutput('App is running')
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
 function doPost(e) {
+  // Set CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+
   try {
     const payload = JSON.parse(e.postData.contents);
     
@@ -28,12 +36,17 @@ function doPost(e) {
     
     doc.saveAndClose();
     
-    return ContentService.createTextOutput('Success')
-      .setMimeType(ContentService.MimeType.TEXT);
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeaders(headers);
       
   } catch (error) {
-    return ContentService.createTextOutput('Error: ' + error.message)
-      .setMimeType(ContentService.MimeType.TEXT);
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: 'error', 
+      message: error.message 
+    }))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeaders(headers);
   }
 }
 
